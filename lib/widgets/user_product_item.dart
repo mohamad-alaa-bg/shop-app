@@ -16,6 +16,7 @@ class UserProductItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scaffold = Scaffold.of(context);
     return ListTile(
       title: Text(title),
       leading: CircleAvatar(
@@ -38,8 +39,17 @@ class UserProductItem extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.delete),
               color: Theme.of(context).errorColor,
-              onPressed: () {
-                Provider.of<Products>(context,listen: false).deleteProduct(id);
+              onPressed: () async {
+                try {
+                  await Provider.of<Products>(context, listen: false)
+                      .deleteProduct(id);
+                } catch (_) {
+                  // هنا لا نستطيع استخدام ايضا ال context لان بينما نحنا نغير يكون ال build لم يكتمل
+                  // لذلك نقوم بتتثبيته في متغير ومنستخدم المتغير
+                  scaffold.showSnackBar(SnackBar(
+                    content: Text('Deleting failed!'),
+                  ));
+                }
               },
             )
           ],

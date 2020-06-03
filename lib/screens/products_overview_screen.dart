@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shopapp/providers/products.dart';
 import '../screens/cart_screen.dart';
 import '../providers/cart.dart';
 import '../widgets/badge.dart';
@@ -19,6 +20,39 @@ class ProductsOverviewScreen extends StatefulWidget {
 
 class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
   bool _showFavoriteData = false;
+  bool _isInit = true;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    // لا يمكن استخدام ال context في تابع ال initState لان لم يكتمل بناء تابع ال build
+    //لذلك اما نستخدمها بتابع didChangeDependencies او نضع تاخير
+    // Provider.of<Products>(context).fetchAndSetProducts();
+    // طريقة التاخير حتى يكتمل بناء ال build
+//    Future.delayed(Duration.zero).then((_) =>
+//        Provider.of<Products>(context, listen: false).fetchAndSetProducts());
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    // TODO: implement didChangeDependencies
+    if (_isInit) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // هنا لا يمكن استخدام ال async لان هذه التوابع لا يمكن ان تكون Future فقط void لذلك نسخدم then
+      Provider.of<Products>(context).fetchAndSetProducts().then((_) {
+        setState(() {
+          _isLoading = false;
+        });
+      });
+    }
+    _isInit = false;
+    super.didChangeDependencies();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,15 +85,22 @@ class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
               child: ch,
               value: cart.itemCount.toString(),
             ),
-            child: IconButton(icon: Icon(Icons.shopping_cart),onPressed: (){
-              Navigator.of(context).pushNamed(CartScreen.routName);
-            },),
+            child: IconButton(
+              icon: Icon(Icons.shopping_cart),
+              onPressed: () {
+                Navigator.of(context).pushNamed(CartScreen.routName);
+              },
+            ),
           ),
         ],
         title: Text(_showFavoriteData ? 'My Favorite' : 'MyShop'),
       ),
       drawer: AppDrawer(),
-      body: ProductGrid(_showFavoriteData),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(),
+            )
+          : ProductGrid(_showFavoriteData),
     );
   }
 }
