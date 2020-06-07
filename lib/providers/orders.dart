@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../providers/cart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -18,14 +18,17 @@ class OrderItem {
 }
 
 class Orders with ChangeNotifier {
-  List<OrderItem> _orders = [];
 
+  List<OrderItem> _orders = [];
+  final String authToken;
+  final String  userId;
+  Orders(this.authToken,this.userId,this._orders);
   List<OrderItem> get orders {
     return [..._orders];
   }
 
   Future<void> addOrder(List<CartItem> cartProducts, double total) async {
-    const url = 'https://shop-app-c5d91.firebaseio.com/orders.json';
+    final url = 'https://shop-app-c5d91.firebaseio.com/orders/$userId.json?auth=$authToken';
     final timeStamp =
         DateTime.now(); // من اجل جعل الوقت هو نفسه في السيرفر وال memory
     final response = await http.post(url,
@@ -55,7 +58,7 @@ class Orders with ChangeNotifier {
   }
 
   Future<void> fetchAndSerOrders() async {
-    const url = 'https://shop-app-c5d91.firebaseio.com/orders.json';
+    final url = 'https://shop-app-c5d91.firebaseio.com/orders/$userId.json?auth=$authToken';
     final responses = await http.get(url);
     final List<OrderItem> loadedOrders = [];
     final extractData = json.decode(responses.body) as Map<String, dynamic>;

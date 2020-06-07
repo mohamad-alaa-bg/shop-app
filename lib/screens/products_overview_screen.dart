@@ -56,7 +56,7 @@ class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cart = Provider.of<Cart>(context);
+  //  final cart = Provider.of<Cart>(context);
     return Scaffold(
       appBar: AppBar(
         actions: <Widget>[

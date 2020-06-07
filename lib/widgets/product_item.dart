@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth.dart';
 import '../providers/cart.dart';
 import '../providers/products.dart';
 import '../providers/product.dart';
@@ -15,6 +16,7 @@ class ProductItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final product = Provider.of<Product>(context, listen: true);
     final cart = Provider.of<Cart>(context, listen: false);
+    final authDate = Provider.of<Auth>(context,listen:false);
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: GridTile(
@@ -43,7 +45,7 @@ class ProductItem extends StatelessWidget {
                       ? Icon(Icons.favorite)
                       : Icon(Icons.favorite_border),
                   onPressed: () {
-                    product.toggleFavoriteStatus();
+                    product.toggleFavoriteStatus(authDate.token,authDate.userId);
                     Provider.of<Products>(context, listen: false)
                         .refresh(); // من اجل عند حذف ال favorite يتم حذفها من القائمة Favorite Only
                   },

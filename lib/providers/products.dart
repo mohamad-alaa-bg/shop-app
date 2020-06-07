@@ -5,6 +5,9 @@ import 'dart:convert';
 import '../models/http_exception.dart';
 
 class Products with ChangeNotifier {
+  final String authToken;
+  final String userId;
+
   List<Product> _items = [
 //    Product(
 //      id: 'p1',
@@ -40,6 +43,8 @@ class Products with ChangeNotifier {
 //    ),
   ];
 
+  Products(this.authToken,this.userId,this._items);
+
   List<Product> get items {
     return [..._items];
   }
@@ -58,8 +63,17 @@ class Products with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchAndSetProducts() async {
-    const url = 'https://shop-app-c5d91.firebaseio.com/products.json';
+  Future<void> fetchAndSetProducts([bool filterByUser = false]) async {
+    //هنا سنقوم بعمل filter عند جلب الداتا في حال كان true سيقوم بجلب فقط الداتا
+    // الخاصة بال user اي بالصفحة ال home يتم اظهار كل المنتجات لكن صفحة
+    // المنتجات المتعلقة بال user لا يظهر بها الا منتجاته
+    // اولا يجب التعديل على ال rule في الداتا بيز بحيث يصبح الترتيب بالنسبة لل creatorId
+    // هنا هذه الطريقة خاصة بال firebase والتي هي OrderBy و equalTo
+    //هنا بهذه الطريقة السيرفر هو الذي يقوم بالفرز اما في حالة التانية
+    // وهي جلب الداتا كلها وعمل فرز هنا بالكود لكن هذه الطريقة خطا لانها تحتاج وقت
+    // لطلب كل الداتا من الداتابيز اما هنا فقط ناخذ المنتجات المتعلقة بال user
+    final filterString = filterByUser ? 'orderBy="creatorId"&equalTo="$userId"' : '';
+    var url = 'https://shop-app-c5d91.firebaseio.com/products.json?auth=$authToken&$filterString';
     try {
       final response = await http.get(url);
       //هنا الخرج عبارة عن map بداخلها map وال key لل map الاولى هو id
@@ -67,6 +81,10 @@ class Products with ChangeNotifier {
       final extractedData = jsonDecode(response.body) as Map<String, dynamic>;
       final List<Product> loadedProducts = [];
       if(extractedData == null){return;}
+       url =
+          'https://shop-app-c5d91.firebaseio.com/userFavorites/$userId.json?auth=$authToken';
+      final favoriteResponse = await http.get(url);
+      final favoriteData = json.decode(favoriteResponse.body);
       extractedData.forEach((productId, productData) {
         loadedProducts.add(Product(
           id: productId,
@@ -74,7 +92,7 @@ class Products with ChangeNotifier {
           price: productData['price'],
           description: productData['description'],
           imageUrl: productData['imageUrl'],
-          isFavorite: productData['isFavorite'],
+          isFavorite:favoriteData == null ? false : favoriteData[productId] ?? false , // ?? تعني عملية if ايضا في حال كانت null
         ));
         _items = loadedProducts;
         notifyListeners();
@@ -130,7 +148,7 @@ class Products with ChangeNotifier {
   //ثم يكمل تنفيذ
   //في حال لا يوجد قيمة return نستخدم finally
   Future<void> addProduct(Product value) async {
-    const url = 'https://shop-app-c5d91.firebaseio.com/products.json';
+    final url = 'https://shop-app-c5d91.firebaseio.com/products.json?auth=$authToken';
     try {
       final response = await http.post(
         url,
@@ -139,7 +157,7 @@ class Products with ChangeNotifier {
           'description': value.description,
           'price': value.price,
           'imageUrl': value.imageUrl,
-          'isFavorite': value.isFavorite,
+          'creatorId' : userId,
         }),
       );
       final newProduct = Product(
@@ -164,7 +182,7 @@ class Products with ChangeNotifier {
     final productIndex = _items.indexWhere((element) => element.id == id);
 
     if (productIndex >= 0) {
-      final url = 'https://shop-app-c5d91.firebaseio.com/products/$id.json';
+      final url = 'https://shop-app-c5d91.firebaseio.com/products/$id.json?auth=$authToken';
       await http.patch(url,
           body: json.encode({
             'title': editProduct.title,
@@ -189,7 +207,7 @@ class Products with ChangeNotifier {
     var existingProduct = _items[existingProductIndex];
     // هنا عند استخدام ال delete وفي حال حدوث خطأ فلا يقوم بارجاع الخطا
     // ونقوم بداخل تابع ال then اكتشاف الخطا statusCode ونقوم ببناء ال exception
-    final url = 'https://shop-app-c5d91.firebaseio.com/products/$id.json';
+    final url = 'https://shop-app-c5d91.firebaseio.com/products/$id.json?auth=$authToken';
     _items.removeAt(existingProductIndex);
     // _items.removeWhere((element) => element.id == id);
     notifyListeners();
