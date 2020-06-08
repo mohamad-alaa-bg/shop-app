@@ -46,8 +46,8 @@ class AppDrawer extends StatelessWidget {
             title: Text('Logout'),
             onTap: () {
               Navigator.of(context).pop();
-              Navigator.of(context).pushNamed('/');
-             // Navigator.of(context).popUntil((route) => route.isFirst); // pop to root
+             // Navigator.of(context).pushNamed('/');
+              Navigator.of(context).popUntil((route) => route.isFirst); // pop to root
               Provider.of<Auth>(context,listen: false).logout();
 
             },

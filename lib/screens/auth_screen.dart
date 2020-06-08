@@ -99,7 +99,11 @@ class AuthCard extends StatefulWidget {
   _AuthCardState createState() => _AuthCardState();
 }
 
-class _AuthCardState extends State<AuthCard> {
+//SingleTickerProviderStateMixin
+//تستخدم من اجل ال animation عند استخدام ال vsync وايضا تخبر
+//ال widget عند انتهاء تحديث ال frame
+class _AuthCardState extends State<AuthCard>
+    with SingleTickerProviderStateMixin {
   final GlobalKey<FormState> _formKey = GlobalKey();
   AuthMode _authMode = AuthMode.Login;
   Map<String, String> _authData = {
@@ -111,6 +115,59 @@ class _AuthCardState extends State<AuthCard> {
   //هنا استخدمنا ال controller لان في حال تسجيل  الحساب نريد التحقق من الباسورد مع ال confirm
   //وذلك قبل حفظ ال form اي ال onSave لم ينفذ بعد لذلك نحتاج القيمة مباشرة
   final _passwordController = TextEditingController();
+
+  //بالنسبة لل animation فانه يعتمد على معدل تحديث الشاشة
+  //والذي هو 60 مرة في الثانية اي مرة كل 16 ميلي ثانية
+  //سنقوم هنا بعمل animation للتبديل بطول الكونتينر بين login or signUp
+  // الفكرة هنا اما نستخدم تايمر ليقوم بالزيادة على الارتفاع مثلا كل وقت معين
+  //او استخدام ال widget المبنية اساسا من قبل ال flutter
+  AnimationController _controller; // متغير من هذا النوع للتحكم في ال animation
+  // هنا كلاس من نوع animation يجب تحديد الشيء المراد التحكم به وهنا هو الحجم(الارتفاع)
+  Animation<Size> _heightAnimation;
+  Animation<Offset> _slideAnimation;
+  Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    //نضع في ال vsync ال widget المراد عمل ال animation لها والتي هي في حالتنا
+    // ال widget التي نحنا فيها اي يتم تحديث تابع ال build عند كل تغيير
+    //الطريقة الثانية لعمل الانميشن وهي تابع AnimatedBuilder خاص ويتم اضافته على ال widget محدد
+    // وبالتالي لا يتم تحديث كامل الصفحة اي تانع ال build الكلي ولكن يتم تحديث
+    //فقط الحقل او جزء من هذه الصفحة
+    // في حال لم نحدد زمن الرجوع بالانميشن فهو نفسها زمن ال duration
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 500),
+    );
+
+    // هنا سوف نحدد البداية والنهاية اي التغيرات التي نريدها
+    // ثم طريقة عرضها وهنا استخدمنا التغير الخطي اي بسرعة متساوية
+    // ممكن استخدام بداية سريعة ونهاية بطيئة .....
+//    _heightAnimation = Tween<Size>(
+//      begin: Size(double.infinity, 260),
+//      end: Size(double.infinity, 320),
+//    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+
+    _opacityAnimation = Tween(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _slideAnimation = Tween<Offset>(begin: Offset(0, -1.5), end: Offset(0, 0))
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    // هنا نضيف listener من اجل تحديث الصفحة عند تغير القيمة
+    //فقط في حالة التي لم نستخدم فيها اي Animation widget
+    // او الافضل نستخدم طريقة AnimatedBuilder التي تحدث فقط الجزء المراد تغيره
+//    _heightAnimation.addListener(() {
+//      setState(() {});
+//    });
+//
+    // الان يجب عمل اتصال بين ما كتبنا والمكان الذي نريد تطبيق الكلام عليه
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -183,10 +240,12 @@ class _AuthCardState extends State<AuthCard> {
       setState(() {
         _authMode = AuthMode.SignUp;
       });
+      _controller.forward(); // to start Animation
     } else {
       setState(() {
         _authMode = AuthMode.Login;
       });
+      _controller.reverse(); // اعادة الى الوضع الديفولت او الحركة العكسية
     }
   }
 
@@ -198,10 +257,23 @@ class _AuthCardState extends State<AuthCard> {
         borderRadius: BorderRadius.circular(10.0),
       ),
       elevation: 8.0,
-      child: Container(
+      //AnimationBuilder
+      // هنا في تابع ال builder نضع فقط الجزء المراد تحديثه rebuild
+      //اما في ال child فنضع الجزء الثابت الذي لا نريد تغيره
+      // هنا ايضا يمكنن استخدام ال AnimatedContainer بدلا من ال animatedBuilder
+      //هنا يقوم بنفس الوظيفة تماما يحدث فقط الجزء المتعلق بالتغيير
+      // ولسنا بحاجة هنا الى كونترولر فقط نضع المدة وطريقة التغيير
+      // وهو عند السطر الذي سوف يتغير سووف يقوم بالتغيير
+      child: AnimatedContainer(
+//        animation: _heightAnimation,
+//        builder: (ctx, ch) => Container(
+        duration: Duration(milliseconds: 500),
+        curve: Curves.easeIn,
         height: _authMode == AuthMode.SignUp ? 320 : 260,
+        //  height: _heightAnimation.value.height,
         constraints:
             BoxConstraints(minHeight: _authMode == AuthMode.SignUp ? 320 : 260),
+        // BoxConstraints(minHeight: _heightAnimation.value.height),
         width: deviceSize.width * 0.75,
         padding: EdgeInsets.all(16.0),
         child: Form(
@@ -234,19 +306,41 @@ class _AuthCardState extends State<AuthCard> {
                     _authData['password'] = value;
                   },
                 ),
-                if (_authMode == AuthMode.SignUp)
-                  TextFormField(
-                    enabled: _authMode == AuthMode.SignUp,
-                    decoration: InputDecoration(labelText: 'Confirm Password'),
-                    obscureText: true,
-                    validator: _authMode == AuthMode.SignUp
-                        ? (value) {
-                            if (value != _passwordController.text) {
-                              return 'Passwords do not match!';
-                            }
-                          }
-                        : null,
+                // if (_authMode == AuthMode.SignUp)
+                //هنا بدل من استخدام الشرط لاظهار او اخفاء الحقل سنقوم
+                //باخفاء او اظهار الحقل بهذه الطريقة تغيير الشفافية
+                //FadeTransition
+                // استخدمنا انميشن تابع لنفس الكونترولر وقمنا بتشغيله
+                //اضفنا ال animatedContainer لتغير الحجم من ال 0 لل 60
+                // لان في حال لم نضعه وقمنا باخفاء الحقل سيبقى لدينا فراغ باللون الابيض
+                // يجب الاخذ بالعلم ان وضع عدة انميشن داخل بعض فهذا يجعل التطبيق يحتاج معالجة اكثر
+                //لذلك يجب تجربة التطبيق عل الاجهزة الضعيفة ايضا
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 500),
+                  curve: Curves.easeIn,
+                  constraints: BoxConstraints(
+                      minHeight: _authMode == AuthMode.SignUp ? 60 : 0,
+                      maxHeight: _authMode == AuthMode.SignUp ? 120 : 0),
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: FadeTransition(
+                      opacity: _opacityAnimation,
+                      child: TextFormField(
+                        enabled: _authMode == AuthMode.SignUp,
+                        decoration:
+                            InputDecoration(labelText: 'Confirm Password'),
+                        obscureText: true,
+                        validator: _authMode == AuthMode.SignUp
+                            ? (value) {
+                                if (value != _passwordController.text) {
+                                  return 'Passwords do not match!';
+                                }
+                              }
+                            : null,
+                      ),
+                    ),
                   ),
+                ),
                 SizedBox(
                   height: 20,
                 ),
